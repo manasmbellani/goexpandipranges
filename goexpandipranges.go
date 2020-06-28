@@ -9,6 +9,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"net"
 	"os"
@@ -39,23 +40,43 @@ func inc(ip net.IP) {
 }
 
 func main() {
+	numGoRoutinesPtr := flag.Int("-t", 20, "Number of goroutines to use")
+	flag.Parse()
+	numGoRoutines := *numGoRoutinesPtr
 
 	var wg sync.WaitGroup
+
+	// Maintain a channel with IP ranges to expand
+	ipRanges := make(chan string)
+
+	// Start the goRoutines to expand the IP ranges
+	for i := 0; i < numGoRoutines; i++ {
+
+		go func(ipRanges chan string, wg *sync.WaitGroup) {
+
+			for ipRange := range ipRanges {
+				defer wg.Done()
+				ips, _ := getIndividualHosts(ipRange)
+				for _, ip := range ips {
+					fmt.Println(ip)
+				}
+			}
+
+		}(ipRanges, &wg)
+	}
 
 	sc := bufio.NewScanner(os.Stdin)
 	for sc.Scan() {
 		ipRange := sc.Text()
 
 		if ipRange != "" {
+			ipRanges <- ipRange
 			wg.Add(1)
-			go func(ipRange string) {
-				defer wg.Done()
-				ips, _ := getIndividualHosts(ipRange)
-				for _, ip := range ips {
-					fmt.Println(ip)
-				}
-			}(ipRange)
+
 		}
 	}
+
+	close(ipRanges)
+
 	wg.Wait()
 }

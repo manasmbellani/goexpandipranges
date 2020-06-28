@@ -5,7 +5,9 @@ Golang script to expand network ranges in following formats to individual IP ran
 
 Based on work done by `kotakanbe` and written here: https://gist.github.com/kotakanbe/d3059af990252ba89a82
 
-IP addresses may not be in order as IP expansion occurs via goroutines
+IP addresses may not be in order as IP expansion occurs via goroutines. 
+
+Use `sort` command to sort the output results.
 
 ## Examples
 
@@ -21,3 +23,16 @@ $ cat /tmp/ranges.txt | goexpandipranges
 ...
 2.2.2.254
 ```
+
+To increase the number of threads from default (20), run the command with `-t` flag:
+```
+$ cat /tmp/ranges.txt
+1.1.1.0/24
+2.2.2.0/24
+
+$ cat /tmp/ranges.txt | goexpandipranges -t 50
+1.1.1.1
+1.1.1.2
+...
+2.2.2.254
+``` 
