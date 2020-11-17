@@ -16,7 +16,8 @@ import (
 	"sync"
 )
 
-func getIndividualHosts(cidr string) ([]string, error) {
+func getIndividualHosts(cidr string, excludeNetworkAddr bool,
+	excludeBroadcastAddr bool) ([]string, error) {
 	ip, ipnet, err := net.ParseCIDR(cidr)
 	if err != nil {
 		return nil, err
@@ -26,8 +27,17 @@ func getIndividualHosts(cidr string) ([]string, error) {
 	for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
 		ips = append(ips, ip.String())
 	}
-	// remove network address and broadcast address
-	return ips[1 : len(ips)-1], nil
+
+	// Remove the network and broadcast addresses, if required
+	if len(ips) > 2 {
+		if excludeNetworkAddr {
+			ips = ips[1:len(ips)]
+		}
+		if excludeBroadcastAddr {
+			ips = ips[0 : len(ips)-1]
+		}
+	}
+	return ips, nil
 }
 
 func inc(ip net.IP) {
@@ -40,9 +50,14 @@ func inc(ip net.IP) {
 }
 
 func main() {
-	numGoRoutinesPtr := flag.Int("-t", 20, "Number of goroutines to use")
+	var numGoRoutines int
+	var excludeNetworkAddr bool
+	var excludeBroadcastAddr bool
+
+	flag.IntVar(&numGoRoutines, "t", 20, "Number of goroutines to use")
+	flag.BoolVar(&excludeNetworkAddr, "en", false, "Exclude the network address")
+	flag.BoolVar(&excludeBroadcastAddr, "eb", false, "Exclude the broadcast address")
 	flag.Parse()
-	numGoRoutines := *numGoRoutinesPtr
 
 	var wg sync.WaitGroup
 
@@ -56,7 +71,8 @@ func main() {
 
 			for ipRange := range ipRanges {
 				defer wg.Done()
-				ips, _ := getIndividualHosts(ipRange)
+				ips, _ := getIndividualHosts(ipRange, excludeNetworkAddr,
+					excludeBroadcastAddr)
 				for _, ip := range ips {
 					fmt.Println(ip)
 				}
